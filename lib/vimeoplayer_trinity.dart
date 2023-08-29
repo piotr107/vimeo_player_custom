@@ -1,5 +1,7 @@
 library vimeoplayer;
 
+import 'dart:ui';
+
 import 'package:better_player/better_player.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -24,7 +26,7 @@ class VimeoPlayer extends StatefulWidget {
   final BoxFit fullscreenVideoFit;
 
   /// Configure controls
-  final ControlsConfig? controlsConfig;
+  final BetterPlayerControlsConfiguration? controlsConfig;
 
   /// Progress indicator color
   final Color? loaderColor;
@@ -41,8 +43,17 @@ class VimeoPlayer extends StatefulWidget {
   /// Defines if player should auto detect full screen device orientation based on aspect ratio of the video. If aspect ratio of the video is < 1 then video will played in full screen in portrait mode. If aspect ratio is >= 1 then video will be played horizontally. If this parameter is true, then [deviceOrientationsOnFullScreen] and [fullScreenAspectRatio] value will be ignored.
   final bool autoDetectFullscreenDeviceOrientation;
 
+  final String accessToken;
+
+  final Text labelText;
+
+  final Function(String) onEvent;
+
   const VimeoPlayer({
     required this.id,
+    required this.accessToken,
+    required this.labelText,
+    required this.onEvent,
     this.autoPlay = false,
     this.looping = false,
     this.controlsConfig,
@@ -85,7 +96,7 @@ class _VimeoPlayerState extends State<VimeoPlayer> {
     _quality = QualityLinks(widget.id);
 
     //Initializing video controllers when receiving data from Vimeo
-    _quality.getQualitiesSync().then((value) {
+    _quality.getQualitiesSync(widget.accessToken).then((value) {
       final _qualityValue = value[value.lastKey()];
 
       // Create resolutions map
@@ -104,21 +115,23 @@ class _VimeoPlayerState extends State<VimeoPlayer> {
       setState(() {
         _betterPlayerController = BetterPlayerController(
           BetterPlayerConfiguration(
-            autoPlay: widget.autoPlay,
-            looping: widget.looping,
-            fullScreenByDefault: fullScreenByDefault,
-            controlsConfiguration: widget.controlsConfig == null
-                ? ControlsConfig()
-                : widget.controlsConfig as ControlsConfig,
-            fit: widget.fullscreenVideoFit,
-            autoDetectFullscreenAspectRatio: true,
-            deviceOrientationsOnFullScreen:
-                widget.deviceOrientationsOnFullScreen,
-            deviceOrientationsAfterFullScreen:
-                widget.deviceOrientationsAfterFullScreen,
-            autoDetectFullscreenDeviceOrientation:
-                widget.autoDetectFullscreenDeviceOrientation,
-          ),
+              autoPlay: widget.autoPlay,
+              looping: widget.looping,
+              fullScreenByDefault: fullScreenByDefault,
+              controlsConfiguration: widget.controlsConfig == null
+                  ? ControlsConfig()
+                  : widget.controlsConfig!,
+              fit: widget.fullscreenVideoFit,
+              autoDetectFullscreenAspectRatio: true,
+              deviceOrientationsOnFullScreen:
+                  widget.deviceOrientationsOnFullScreen,
+              deviceOrientationsAfterFullScreen:
+                  widget.deviceOrientationsAfterFullScreen,
+              autoDetectFullscreenDeviceOrientation:
+                  widget.autoDetectFullscreenDeviceOrientation,
+              eventListener: (event) {
+                widget.onEvent(event.betterPlayerEventType.name);
+              }),
           betterPlayerDataSource: betterPlayerDataSource,
         );
       });
@@ -142,18 +155,24 @@ class _VimeoPlayerState extends State<VimeoPlayer> {
   @override
   Widget build(BuildContext context) {
     return _betterPlayerController == null
-        ? AspectRatio(
-            aspectRatio: 16 / 9,
-            child: Center(
-              child: CircularProgressIndicator(
-                color: widget.loaderColor,
-                backgroundColor: widget.loaderBackgroundColor,
-              ),
-            ),
-          )
-        : BetterPlayer(
-            controller: _betterPlayerController!,
-          );
+        ? const SizedBox()
+        : Padding(
+            padding: const EdgeInsets.only(top: 32, left: 8, right: 8),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                widget.labelText,
+                const SizedBox(
+                  height: 16,
+                ),
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(24.0),
+                  child: BetterPlayer(
+                    controller: _betterPlayerController!,
+                  ),
+                )
+              ],
+            ));
   }
 
   @override

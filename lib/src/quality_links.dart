@@ -12,26 +12,30 @@ class QualityLinks {
 
   QualityLinks(this.videoId);
 
-  getQualitiesSync() {
-    return getQualitiesAsync();
+  getQualitiesSync(String accessToken) {
+    return getQualitiesAsync(accessToken);
   }
 
-  Future<SplayTreeMap?> getQualitiesAsync() async {
+  Future<SplayTreeMap?> getQualitiesAsync(String accessToken) async {
     try {
       final Uri? vimeoLink =
-          Uri.tryParse('https://player.vimeo.com/video/${videoId!}/config');
-      var response = await http.get(vimeoLink!);
+          Uri.tryParse('https://api.vimeo.com/videos/${videoId!}');
+      final headers = {
+        'Authorization': 'bearer $accessToken'
+      };
+      var response = await http.get(vimeoLink!, headers: headers);
+      print(response.body);
       var jsonData =
-          jsonDecode(response.body)['request']['files']['progressive'];
+          jsonDecode(response.body)['play']['progressive'];
       SplayTreeMap videoList = SplayTreeMap.fromIterable(
         jsonData,
-        key: (item) => "${item['quality']} ${item['fps']}",
-        value: (item) => item['url'],
+        key: (item) => "${item['height']}p ${item['fps']}",
+        value: (item) => item['link'],
       );
       return videoList;
     } catch (error) {
       log('=====> REQUEST ERROR: $error');
-      return null;
+      throw error;
     }
   }
 }
